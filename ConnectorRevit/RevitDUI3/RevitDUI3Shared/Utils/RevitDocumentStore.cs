@@ -24,6 +24,12 @@ public class RevitDocumentStore : DocumentModelStore
     RevitApp.Application.DocumentSaving += (_,_) => WriteToFile();
     RevitApp.Application.DocumentSynchronizingWithCentral += (_,_) => WriteToFile();
     
+    // TODO: save the state before swapping to a potentially different document
+    // RevitApp.ViewActivating += (a, b) =>
+    // {
+    //   WriteToFile();
+    // };
+    
     RevitApp.ViewActivated += (_, e) =>
     {
       if (e.Document == null) return;

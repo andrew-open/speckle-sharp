@@ -17,5 +17,6 @@ public class SelectionInfo
 {
   public List<string> SelectedObjectIds { get; set; }
   public string Summary { get; set; }
+  public string Warning { get; set; }
 }
 

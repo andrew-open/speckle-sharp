@@ -6,6 +6,7 @@ using DUI3;
 using DUI3.Bindings;
 using DUI3.Models;
 using Rhino;
+using Speckle.Core.Models;
 
 namespace ConnectorRhinoWebUI.Bindings;
 
@@ -13,9 +14,9 @@ public class SendBinding : ISendBinding
 {
   public string Name { get; set; } = "sendBinding";
   public IBridge Parent { get; set; }
-  private DocumentModelStore _store;
+  private readonly DocumentModelStore _store;
 
-  private HashSet<string> _changedObjectIds { get; set; } = new();
+  private HashSet<string> ChangedObjectIds { get; set; } = new();
   
   public SendBinding(DocumentModelStore store)
   {
@@ -29,22 +30,22 @@ public class SendBinding : ISendBinding
     RhinoDoc.AddRhinoObject += (_, e) =>
     {
       if (!_store.IsDocumentInit) return;
-      _changedObjectIds.Add(e.ObjectId.ToString());
+      ChangedObjectIds.Add(e.ObjectId.ToString());
       RhinoIdleManager.SubscribeToIdle(RunExpirationChecks);
     };
     
     RhinoDoc.DeleteRhinoObject += (_, e) =>
     {
       if (!_store.IsDocumentInit) return;
-      _changedObjectIds.Add(e.ObjectId.ToString());
+      ChangedObjectIds.Add(e.ObjectId.ToString());
       RhinoIdleManager.SubscribeToIdle(RunExpirationChecks);
     };
     
     RhinoDoc.ReplaceRhinoObject += (_, e) =>
     {
       if (!_store.IsDocumentInit) return;
-      _changedObjectIds.Add(e.NewRhinoObject.Id.ToString());
-      _changedObjectIds.Add(e.OldRhinoObject.Id.ToString());
+      ChangedObjectIds.Add(e.NewRhinoObject.Id.ToString());
+      ChangedObjectIds.Add(e.OldRhinoObject.Id.ToString());
       RhinoIdleManager.SubscribeToIdle(RunExpirationChecks);
     }; 
   }
@@ -59,15 +60,51 @@ public class SendBinding : ISendBinding
     };
   }
 
-  public void Send(string modelId)
+  public void Send(string cardId)
   {
-    var model = _store.GetModelById(modelId) as SenderModelCard;
-    throw new System.NotImplementedException();
+    var model = _store.GetModelById(cardId) as SenderModelCard;
+    if (model == null) return; // TODO: throw
+    
+    var objectIds = model.SendFilter.GetObjectIds();
+    var convertedObjects = new List<Base>();
+
+    var converter = ConverterProvider.GetConverterInstance();
+    converter.SetContextDocument(RhinoDoc.ActiveDoc);
+    
+    var count = 0;
+    foreach (var id in objectIds)
+    {
+      count++;
+      var myObject = RhinoDoc.ActiveDoc.Objects.FindId(new Guid(id));
+      try
+      {
+        var converted = converter.ConvertToSpeckle(myObject);
+        // TODO: check if converted is null
+        convertedObjects.Add(converted);
+      }
+      catch (Exception e)
+      {
+        // TODO
+        // ProgressReport.AddStuff();
+      }
+
+      var args = new SenderProgressArgs()
+      {
+        Id= cardId,
+        Status = "Converting",
+        Progress = count/objectIds.Count
+      };
+      Parent.SendToBrowser(SendBindingEvents.SenderProgress, args );
+    }
+
+    var baseCollection = new Base();
+    baseCollection["@elements"] = convertedObjects;
+    //throw new System.NotImplementedException();
   }
 
   public void CancelSend(string modelId)
   {
-    throw new System.NotImplementedException();
+    //throw new System.NotImplementedException();
   }
 
   public void Highlight(string modelId)
@@ -78,7 +115,7 @@ public class SendBinding : ISendBinding
   private void RunExpirationChecks()
   {
     var senders = _store.GetSenders();
-    var objectIdsList = _changedObjectIds.ToArray();
+    var objectIdsList = ChangedObjectIds.ToArray();
     var expiredSenderIds = new List<string>();
     
     foreach (var sender in senders)
@@ -90,6 +127,6 @@ public class SendBinding : ISendBinding
       }
     }
     Parent.SendToBrowser(SendBindingEvents.SendersExpired, expiredSenderIds);
-    _changedObjectIds = new HashSet<string>();
+    ChangedObjectIds = new HashSet<string>();
   }
 }

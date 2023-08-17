@@ -1,10 +1,12 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.DB;
 using DUI3;
 using DUI3.Bindings;
 using Speckle.ConnectorRevitDUI3.Utils;
+using Speckle.Core.Kits;
 
 namespace Speckle.ConnectorRevitDUI3.Bindings;
 
@@ -12,20 +14,18 @@ public class SendBinding : ISendBinding
 {
   public string Name { get; set; } = "sendBinding";
   public IBridge Parent { get; set; }
+  private readonly RevitDocumentStore _store;
+  private static UIApplication _revitApp;
+  private HashSet<string> ChangedObjectIds { get; set; } = new();
   
-  private RevitDocumentStore _store;
-
-  private static UIApplication RevitApp;
-
-  private HashSet<string> _changedObjectIds { get; set; } = new();
   public SendBinding(RevitDocumentStore store)
   {
-    RevitApp = RevitAppProvider.RevitApp;
+    _revitApp = RevitAppProvider.RevitApp;
     _store = store;
-    
+
     // TODO expiry events
     // TODO filters need refresh events
-    RevitApp.Application.DocumentChanged += (_, e) => DocChangeHandler(e);
+    _revitApp.Application.DocumentChanged += (_, e) => DocChangeHandler(e);
   }
   
   public List<ISendFilter> GetSendFilters()
@@ -39,7 +39,10 @@ public class SendBinding : ISendBinding
 
   public void Send(string modelId)
   {
-    throw new System.NotImplementedException();
+    var converter = ConverterProvider.GetConverterInstance();
+    converter.CanConvertToSpeckle(new { });
+    
+    //throw new System.NotImplementedException();
   }
 
   public void CancelSend(string modelId)
@@ -66,16 +69,16 @@ public class SendBinding : ISendBinding
 
     foreach (ElementId elementId in addedElementIds)
     {
-      _changedObjectIds.Add(elementId.IntegerValue.ToString());
+      ChangedObjectIds.Add(elementId.IntegerValue.ToString());
     }
     foreach (ElementId elementId in deletedElementIds)
     {
-      _changedObjectIds.Add(elementId.IntegerValue.ToString());
+      ChangedObjectIds.Add(elementId.IntegerValue.ToString());
     }
     
     foreach (ElementId elementId in modifiedElementIds)
     {
-      _changedObjectIds.Add(elementId.IntegerValue.ToString());
+      ChangedObjectIds.Add(elementId.IntegerValue.ToString());
     }
     
     // TODO: CHECK IF ANY OF THE ABOVE ELEMENTS NEED TO TRIGGER A FILTER REFRESH
@@ -90,7 +93,7 @@ public class SendBinding : ISendBinding
 
     foreach (var sender in senders)
     {
-      var isExpired = sender.SendFilter.CheckExpiry(_changedObjectIds.ToArray());
+      var isExpired = sender.SendFilter.CheckExpiry(ChangedObjectIds.ToArray());
       if (isExpired)
       {
         expiredSenderIds.Add(sender.Id);
@@ -98,6 +101,6 @@ public class SendBinding : ISendBinding
     }
     
     Parent.SendToBrowser(SendBindingEvents.SendersExpired, expiredSenderIds);
-    _changedObjectIds = new HashSet<string>();
+    ChangedObjectIds = new HashSet<string>();
   }
 }

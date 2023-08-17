@@ -1,5 +1,4 @@
-﻿using DUI3.Bindings;
-using DUI3.Utils;
+﻿using DUI3.Utils;
 
 namespace DUI3.Models;
 
@@ -18,6 +17,6 @@ public class ModelCard : DiscriminatedObject
   /// Project id. FKA stream id.
   /// </summary>
   public string ProjectId { get; set; }
-  public string AccountId { get; set; }
+  public string AccountId { get; set; } // ?
   public string LastLocalUpdate { get; set; }
 }

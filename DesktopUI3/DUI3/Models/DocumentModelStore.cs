@@ -26,7 +26,7 @@ public abstract class DocumentModelStore : DiscriminatedObject
   public virtual bool IsDocumentInit { get; set; } = false;
   public ModelCard GetModelById(string modelId)
   {
-    var model = Models.First(model => model.ModelId == modelId);
+    var model = Models.First(model => model.Id == modelId);
     return model;
   }
 

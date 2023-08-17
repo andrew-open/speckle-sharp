@@ -12,19 +12,19 @@ public interface ISendBinding : IBinding
   /// Instructs the host app to start sending this model.
   /// </summary>
   /// <param name="modelId"></param>
-  public void Send(string modelId);
+  public void Send(string cardId);
   
   /// <summary>
   /// Instructs the host app to  cancel the sending for a given model.
   /// </summary>
   /// <param name="modelId"></param>
-  public void CancelSend(string modelId);
+  public void CancelSend(string cardId);
   
   /// <summary>
   /// Highlights the objects attached to this sender in the host application.
   /// </summary>
   /// <param name="modelId"></param>
-  public void Highlight(string modelId); 
+  public void Highlight(string cardId); 
 }
 
 public static class SendBindingEvents
@@ -37,6 +37,13 @@ public static class SendBindingEvents
 public class SenderModelCard : ModelCard
 {
   public ISendFilter SendFilter { get; set; }
+}
+
+public class SenderProgressArgs
+{
+  public string Id { get; set; }
+  public string Status { get; set; }
+  public double Progress { get; set; }
 }
 
 public interface ISendFilter
